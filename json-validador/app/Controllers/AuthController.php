@@ -597,4 +597,109 @@ class AuthController {
         for ($i=0; $i<$len; $i++) $out .= $alphabet[random_int(0,$n-1)];
         return $out;
     }
+
+    /* ------------------ FORGOT PASSWORD ------------------ */
+    public static function forgotForm(): string {
+        if (!headers_sent()) header('Content-Type: text/html; charset=UTF-8');
+        $csrf = self::csrfToken();
+        ob_start(); ?>
+        <!doctype html><html lang="es"><head>
+        <meta charset="utf-8">
+        <title>Recuperar contraseña · SOPMEX</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="/assets/css/app.css?v=3" rel="stylesheet">
+        </head>
+        <body class="auth-bg">
+        <?= self::headerNav('login', false) ?>
+
+        <main class="auth-wrapper">
+          <section class="auth-card">
+            <div class="auth-brand">
+              <img src="/assets/img/sopmex-logo.png" alt="SOPMEX" class="auth-logo">
+              <h1 class="auth-title">Recuperar contraseña</h1>
+              <p class="auth-subtitle">Ingresa tu email y te enviaremos instrucciones para restablecer tu contraseña.</p>
+            </div>
+
+            <form method="post" action="/forgot" accept-charset="UTF-8" class="auth-form">
+              <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>">
+
+              <label class="auth-field">
+                <span class="auth-label">Email</span>
+                <input type="email" name="email" required placeholder="tucorreo@empresa.com" inputmode="email" autocomplete="email">
+              </label>
+
+              <button class="btn btn-primary btn-full" type="submit">Enviar instrucciones</button>
+
+              <div class="auth-links">
+                <a class="link" href="/login">Volver a iniciar sesión</a>
+                <span class="sep">·</span>
+                <a class="link" href="/register">Crear cuenta</a>
+              </div>
+            </form>
+          </section>
+        </main>
+
+        <footer class="auth-footer">© SOPMEX · Validador JSON</footer>
+
+        </body></html>
+        <?php return ob_get_clean();
+    }
+
+    public static function forgotHandle(): string {
+        self::assertCsrf($_POST['csrf'] ?? '');
+        $email = strtolower(trim((string)($_POST['email'] ?? '')));
+
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return self::forgotResult('Email inválido', false);
+        }
+
+        $pdo = DB::pdo();
+        $st = $pdo->prepare("SELECT id, name FROM users WHERE email = ?");
+        $st->execute([$email]);
+        $user = $st->fetch();
+
+        // Always show success message to prevent email enumeration
+        return self::forgotResult(
+            'Si el email está registrado, recibirás instrucciones para restablecer tu contraseña. ' .
+            'Si no recibes el correo en unos minutos, revisa tu carpeta de spam o contacta al administrador.',
+            true
+        );
+    }
+
+    private static function forgotResult(string $message, bool $success): string {
+        if (!headers_sent()) header('Content-Type: text/html; charset=UTF-8');
+        ob_start(); ?>
+        <!doctype html><html lang="es"><head>
+        <meta charset="utf-8">
+        <title>Recuperar contraseña · SOPMEX</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="/assets/css/app.css?v=3" rel="stylesheet">
+        </head>
+        <body class="auth-bg">
+        <?= self::headerNav('login', false) ?>
+
+        <main class="auth-wrapper">
+          <section class="auth-card">
+            <div class="auth-brand">
+              <img src="/assets/img/sopmex-logo.png" alt="SOPMEX" class="auth-logo">
+              <h1 class="auth-title"><?= $success ? 'Solicitud enviada' : 'Error' ?></h1>
+            </div>
+
+            <div style="text-align:center; padding: 20px 0;">
+              <p class="<?= $success ? 'muted' : '' ?>" style="<?= $success ? '' : 'color:#dc2626;' ?>">
+                <?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?>
+              </p>
+            </div>
+
+            <div class="auth-links" style="text-align:center;">
+              <a class="btn" href="/login">Volver a iniciar sesión</a>
+            </div>
+          </section>
+        </main>
+
+        <footer class="auth-footer">© SOPMEX · Validador JSON</footer>
+
+        </body></html>
+        <?php return ob_get_clean();
+    }
 }

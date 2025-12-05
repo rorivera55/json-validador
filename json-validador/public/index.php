@@ -74,6 +74,8 @@ $router->get ('/register', [AuthController::class, 'registerForm']);
 $router->post('/register', [AuthController::class, 'registerHandle']);
 $router->get ('/login',    [AuthController::class, 'loginForm']);
 $router->post('/login',    [AuthController::class, 'loginHandle']);
+$router->get ('/forgot',   [AuthController::class, 'forgotForm']);
+$router->post('/forgot',   [AuthController::class, 'forgotHandle']);
 $router->get ('/logout',   [AuthController::class, 'logout']);
 $router->get ('/dashboard',[AuthController::class, 'dashboard']); // simple panel
 
