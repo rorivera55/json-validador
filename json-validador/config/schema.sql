@@ -1,0 +1,60 @@
+-- Organizaciones (multi-cliente)
+CREATE TABLE IF NOT EXISTS organizations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(190) NOT NULL,
+  rfc  VARCHAR(13)  NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Estaciones por organización
+CREATE TABLE IF NOT EXISTS stations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT NOT NULL,
+  rfc VARCHAR(13) NOT NULL,
+  permiso VARCHAR(40) NOT NULL,
+  clave_instalacion VARCHAR(40) NOT NULL,
+  nombre VARCHAR(190) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_station (org_id, rfc, permiso, clave_instalacion),
+  CONSTRAINT fk_stations_org FOREIGN KEY (org_id) REFERENCES organizations(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Cargas de archivos (ZIP o JSON)
+CREATE TABLE IF NOT EXISTS uploads (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT NOT NULL,
+  station_id INT NOT NULL,
+  filename VARCHAR(255) NOT NULL,
+  sha256 CHAR(64) NOT NULL,
+  period_year SMALLINT NOT NULL,
+  period_month TINYINT NOT NULL,
+  sat_version VARCHAR(20) NULL,
+  status ENUM('valid','invalid','warning') NOT NULL DEFAULT 'warning',
+  errors_json JSON NULL,
+  created_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_u1 (org_id, station_id, period_year, period_month),
+  CONSTRAINT fk_uploads_org FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_uploads_station FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Resumen por producto para cada upload (agregado mensual)
+CREATE TABLE IF NOT EXISTS upload_products (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  upload_id BIGINT NOT NULL,
+  product_code VARCHAR(10) NOT NULL,      -- p.ej. PR07 (gasolinas), PR03 (diésel)
+  subproduct_code VARCHAR(10) NULL,       -- p.ej. SP16, SP17, SP18
+  brand VARCHAR(120) NULL,                -- Marca comercial del JSON
+  vol_recepcion_l DECIMAL(14,3) NOT NULL DEFAULT 0,
+  imp_recepcion_mxn DECIMAL(14,2) NOT NULL DEFAULT 0,
+  vol_entrega_l DECIMAL(14,3) NOT NULL DEFAULT 0,
+  imp_entrega_mxn DECIMAL(14,2) NOT NULL DEFAULT 0,
+  existencia_fin_l DECIMAL(14,3) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_up1 (upload_id, product_code, subproduct_code),
+  CONSTRAINT fk_up_upload FOREIGN KEY (upload_id) REFERENCES uploads(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Crea una organización por defecto (SOPMEX) para arrancar
+INSERT INTO organizations (name, rfc) VALUES ('SOPMEX (demo)', NULL);
